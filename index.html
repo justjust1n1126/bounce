@@ -3,38 +3,53 @@
 <head>
     <title>Physics simulator</title>
     <style>
-        canvas { border: 1px solid black; }
+        canvas { border: 1px solid black; background: #f0f0f0; }
         .controls { margin: 10px 0; }
         label { display: inline-block; width: 120px; }
+        .control-group { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
     <div class="controls">
-        <label>gravity: </label>
-        <input type="range" id="gravity" min="0" max="0.5" step="0.01" value="0.1">
-        <span id="gravityValue">0.1</span><br>
-        <label>friction: </label>
-        <input type="range" id="friction" min="0.9" max="1" step="0.01" value="0.99">
-        <span id="frictionValue">0.99</span><br>
-        <label>bounce: </label>
-        <input type="range" id="bounce" min="0" max="1" step="0.01" value="0.8">
-        <span id="bounceValue">0.8</span>
+        <div class="control-group">
+            <h3>Environment controller</h3>
+            <label>Gravity: </label>
+            <input type="range" id="gravity" min="0" max="0.5" step="0.01" value="0.1">
+            <span id="gravityValue">0.1</span><br>
+            <label>Friction: </label>
+            <input type="range" id="friction" min="0.9" max="1" step="0.01" value="0.99">
+            <span id="frictionValue">0.99</span><br>
+            <label>Bounce: </label>
+            <input type="range" id="bounce" min="0" max="1" step="0.01" value="0.8">
+            <span id="bounceValue">0.8</span>
+        </div>
+        
+        <div class="control-group">
+            <h3>Ball controller</h3>
+            <label>Ball Color: </label>
+            <input type="color" id="ballColor" value="#ff0000"><br>
+            <label>Ball Size: </label>
+            <input type="range" id="ballSize" min="5" max="30" step="1" value="10">
+            <span id="ballSizeValue">10</span><br>
+            <label>Initial Speed on the X(vertical, up and down)axis: </label>
+            <input type="range" id="initialVX" min="-5" max="5" step="0.1" value="2">
+            <span id="initialVXValue">2</span><br>
+            <label>Initial Speed on the Y(horizontal, left and right)axis: </label>
+            <input type="range" id="initialVY" min="-5" max="5" step="0.1" value="0">
+            <span id="initialVYValue">0</span><br>
+            <button onclick="resetBall()">Reset Ball</button>
+        </div>
     </div>
     <canvas id="canvas" width="800" height="600"></canvas>
 
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const gravitySlider = document.getElementById('gravity');
-        const frictionSlider = document.getElementById('friction');
-        const bounceSlider = document.getElementById('bounce');
-        
         const cx = canvas.width/2;
         const cy = canvas.height/2;
-        const hexSize = 200;
-        const ballRadius = 10;
+        const hexSize = 250;
         let hexAngle = 0;
-        const omega = 0.03;
+        const omega = 0.02;
         
         let ball = {
             x: cx,
@@ -42,14 +57,18 @@
             vx: 2,
             vy: 0
         };
-        
-        function updateSliderValue(slider, valueElement) {
-            valueElement.textContent = slider.value;
+
+        // Initialize slider value displays
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            input.oninput = () => document.getElementById(input.id + 'Value').textContent = input.value;
+        });
+
+        function resetBall() {
+            ball.x = cx;
+            ball.y = cy;
+            ball.vx = parseFloat(document.getElementById('initialVX').value);
+            ball.vy = parseFloat(document.getElementById('initialVY').value);
         }
-        
-        gravitySlider.oninput = () => updateSliderValue(gravitySlider, document.getElementById('gravityValue'));
-        frictionSlider.oninput = () => updateSliderValue(frictionSlider, document.getElementById('frictionValue'));
-        bounceSlider.oninput = () => updateSliderValue(bounceSlider, document.getElementById('bounceValue'));
 
         function getHexVertices(angle) {
             const vertices = [];
@@ -93,11 +112,12 @@
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            
+            // Update physics
             hexAngle += omega;
-            const gravity = parseFloat(gravitySlider.value);
-            const friction = parseFloat(frictionSlider.value);
-            const bounce = parseFloat(bounceSlider.value);
+            const gravity = parseFloat(document.getElementById('gravity').value);
+            const friction = parseFloat(document.getElementById('friction').value);
+            const bounce = parseFloat(document.getElementById('bounce').value);
+            const ballSize = parseFloat(document.getElementById('ballSize').value);
             
             ball.vy += gravity;
             ball.vx *= friction;
@@ -106,7 +126,7 @@
             ball.x += ball.vx;
             ball.y += ball.vy;
             
-           
+            // Collision detection
             const vertices = getHexVertices(hexAngle);
             for(let i = 0; i < 6; i++) {
                 const A = vertices[i];
@@ -117,37 +137,37 @@
                 const dy = ball.y - P.y;
                 const distance = Math.sqrt(dx*dx + dy*dy);
                 
-                if(distance < ballRadius) {
-                
+                if(distance < ballSize) {
                     const M = {x: (A.x + B.x)/2, y: (A.y + B.y)/2};
                     const normal = {x: cx - M.x, y: cy - M.y};
                     const length = Math.sqrt(normal.x*normal.x + normal.y*normal.y);
                     normal.x /= length;
-                    normal.y /= 
+                    normal.y /= length;
+                    
                     const vt = {
                         x: -omega * (P.y - cy),
-                        y: omega * (P.x - 
+                        y: omega * (P.x - cx)
+                    };
+                    
                     const vRel = {
                         x: ball.vx - vt.x,
                         y: ball.vy - vt.y
                     };
                     const vReflected = reflect(vRel, normal);
                     
-                    // Apply bounce and wall velocity
                     ball.vx = vReflected.x * bounce + vt.x;
                     ball.vy = vReflected.y * bounce + vt.y;
                     
-                    // Reposition ball
-                    ball.x = P.x + normal.x * ballRadius;
-                    ball.y = P.y + normal.y * ballRadius;
+                    ball.x = P.x + normal.x * ballSize;
+                    ball.y = P.y + normal.y * ballSize;
                     break;
                 }
             }
             
             // Draw hexagon
             ctx.beginPath();
-            ctx.strokeStyle = 'black';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#1a73e8';
+            ctx.lineWidth = 4;
             vertices.forEach((v, i) => {
                 if(i === 0) ctx.moveTo(v.x, v.y);
                 else ctx.lineTo(v.x, v.y);
@@ -157,13 +177,14 @@
             
             // Draw ball
             ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI*2);
-            ctx.fillStyle = 'red';
+            ctx.arc(ball.x, ball.y, ballSize, 0, Math.PI*2);
+            ctx.fillStyle = document.getElementById('ballColor').value;
             ctx.fill();
             
             requestAnimationFrame(animate);
         }
         
+        resetBall();
         animate();
     </script>
 </body>
