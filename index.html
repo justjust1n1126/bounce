@@ -108,17 +108,34 @@
         ballSpeedY += gravity;  // Increase downward velocity due to gravity
     }
 
-    // Function to handle ball bouncing off the hexagon walls
+    // Function to check if the ball is outside the hexagon and handle collisions
     function handleCollisions() {
+        // Check ball's position relative to each hexagon wall
         for (let i = 0; i < 6; i++) {
             const angleStart = Math.PI / 3 * i;
             const angleEnd = Math.PI / 3 * (i + 1);
+            const x1 = hexRadius * Math.cos(angleStart);
+            const y1 = hexRadius * Math.sin(angleStart);
+            const x2 = hexRadius * Math.cos(angleEnd);
+            const y2 = hexRadius * Math.sin(angleEnd);
 
-            // Check if ball collides with any of the walls of the hexagon
-            if (ballX > hexCenterX && ballX < hexCenterX + hexRadius && ballY > hexCenterY) {
-                // Bouncing logic for realistic friction and gravity effects
-                ballSpeedY = -ballSpeedY * bounceFactor; // Reverse and reduce vertical speed
-                ballSpeedX *= friction; // Apply friction on horizontal motion
+            // Calculate ball's distance to the current edge of the hexagon
+            const ballAngle = Math.atan2(ballY - hexCenterY, ballX - hexCenterX);
+            const ballDist = Math.sqrt(Math.pow(ballX - hexCenterX, 2) + Math.pow(ballY - hexCenterY, 2));
+
+            if (ballDist + ballRadius > hexRadius) {
+                // Ball has hit the hexagonal boundary
+                // Reflect ball direction and apply bounce factor
+                ballSpeedX = -ballSpeedX * bounceFactor;
+                ballSpeedY = -ballSpeedY * bounceFactor;
+
+                // Correct ball's position
+                const normalAngle = (angleStart + angleEnd) / 2;
+                const normalX = Math.cos(normalAngle);
+                const normalY = Math.sin(normalAngle);
+                const overlap = ballDist + ballRadius - hexRadius;
+                ballX -= overlap * normalX;
+                ballY -= overlap * normalY;
             }
         }
     }
@@ -135,13 +152,12 @@
         ballX += ballSpeedX;  // Update ball's position
         ballY += ballSpeedY;
 
-        // Handle wall collisions
-        handleCollisions();
+        handleCollisions();  // Handle collisions with hexagon walls
 
         // Rotate hexagon
         hexAngle += 0.01;  // Rotate the hexagon by a small angle
 
-        // Prevent ball from moving off-screen
+        // Prevent ball from moving off-screen (if necessary)
         if (ballX + ballRadius > canvas.width || ballX - ballRadius < 0) {
             ballSpeedX = -ballSpeedX * bounceFactor;  // Bounce off the walls horizontally
         }
