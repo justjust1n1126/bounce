@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bouncing Ball in a Spinning Hexagon</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        canvas {
+            display: block;
+            margin: auto;
+            background-color: #ffffff;
+        }
+        #controls {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        .slider {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="controls">
+    <label for="gravitySlider">Gravity: </label>
+    <input type="range" id="gravitySlider" class="slider" min="0" max="1" step="0.01" value="0.2"><span id="gravityValue">0.2</span><br>
+
+    <label for="frictionSlider">Friction: </label>
+    <input type="range" id="frictionSlider" class="slider" min="0" max="1" step="0.01" value="0.99"><span id="frictionValue">0.99</span><br>
+
+    <label for="bounceSlider">Bounce Factor: </label>
+    <input type="range" id="bounceSlider" class="slider" min="0" max="1" step="0.01" value="0.8"><span id="bounceValue">0.8</span><br>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Set canvas size to window size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Ball properties
+    const ballRadius = 20;
+    let ballX = canvas.width / 2;
+    let ballY = canvas.height / 2;
+    let ballSpeedX = 3;
+    let ballSpeedY = 0;
+
+    // Default Physics properties
+    let gravity = 0.2;
+    let friction = 0.99;
+    let bounceFactor = 0.8;
+
+    // Hexagon properties
+    const hexRadius = 200;
+    const hexCenterX = canvas.width / 2;
+    const hexCenterY = canvas.height / 2;
+    let hexAngle = 0; // Rotation angle for hexagon
+
+    // Function to draw the rotating hexagon
+    function drawHexagon() {
+        ctx.save();
+        ctx.translate(hexCenterX, hexCenterY);
+        ctx.rotate(hexAngle);
+
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const angle = Math.PI / 3 * i;
+            const x = hexRadius * Math.cos(angle);
+            const y = hexRadius * Math.sin(angle);
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+        ctx.closePath();
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // Function to draw the ball
+    function drawBall() {
+        ctx.beginPath();
+        ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff0000";
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // Function to simulate gravity
+    function applyGravity() {
+        ballSpeedY += gravity;  // Increase downward velocity due to gravity
+    }
+
+    // Function to handle ball bouncing off the hexagon walls
+    function handleCollisions() {
+        for (let i = 0; i < 6; i++) {
+            const angleStart = Math.PI / 3 * i;
+            const angleEnd = Math.PI / 3 * (i + 1);
+
+            // Check if ball collides with any of the walls of the hexagon
+            if (ballX > hexCenterX && ballX < hexCenterX + hexRadius && ballY > hexCenterY) {
+                // Bouncing logic for realistic friction and gravity effects
+                ballSpeedY = -ballSpeedY * bounceFactor; // Reverse and reduce vertical speed
+                ballSpeedX *= friction; // Apply friction on horizontal motion
+            }
+        }
+    }
+
+    // Update the game objects and handle animation
+    function update() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+        drawHexagon();
+        drawBall();
+
+        applyGravity();  // Apply gravity
+
+        ballX += ballSpeedX;  // Update ball's position
+        ballY += ballSpeedY;
+
+        // Handle wall collisions
+        handleCollisions();
+
+        // Rotate hexagon
+        hexAngle += 0.01;  // Rotate the hexagon by a small angle
+
+        // Prevent ball from moving off-screen
+        if (ballX + ballRadius > canvas.width || ballX - ballRadius < 0) {
+            ballSpeedX = -ballSpeedX * bounceFactor;  // Bounce off the walls horizontally
+        }
+
+        if (ballY + ballRadius > canvas.height || ballY - ballRadius < 0) {
+            ballSpeedY = -ballSpeedY * bounceFactor;  // Bounce off the top/bottom of the screen
+        }
+
+        requestAnimationFrame(update); // Call update for the next frame
+    }
+
+    // Listen for changes in the sliders and update physics values
+    document.getElementById('gravitySlider').addEventListener('input', (e) => {
+        gravity = parseFloat(e.target.value);
+        document.getElementById('gravityValue').textContent = e.target.value;
+    });
+
+    document.getElementById('frictionSlider').addEventListener('input', (e) => {
+        friction = parseFloat(e.target.value);
+        document.getElementById('frictionValue').textContent = e.target.value;
+    });
+
+    document.getElementById('bounceSlider').addEventListener('input', (e) => {
+        bounceFactor = parseFloat(e.target.value);
+        document.getElementById('bounceValue').textContent = e.target.value;
+    });
+
+    // Start the game loop
+    update();
+</script>
+
+</body>
+</html>
