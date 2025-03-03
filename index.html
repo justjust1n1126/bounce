@@ -21,40 +21,19 @@
         .scene-option {
             padding: 20px;
             margin: 10px;
-            background: white;
-            color: black;
-            border: 3px solid;
+            background: #333;
+            color: white;
+            border: 2px solid #00ffff;
             border-radius: 15px;
             cursor: pointer;
             width: 300px;
             text-align: center;
-            position: relative;
             transition: transform 0.2s;
         }
         
         .scene-option:hover {
             transform: scale(1.05);
-        }
-        
-        .scene-option::before {
-            content: '';
-            position: absolute;
-            top: -3px;
-            left: -3px;
-            right: -3px;
-            bottom: -3px;
-            border-radius: 15px;
-            background: linear-gradient(45deg, 
-                #ff0000, #ff8000, #ffff00, 
-                #00ff00, #00ffff, #0000ff, 
-                #8000ff, #ff0080);
-            z-index: -1;
-            animation: rainbow-border 4s linear infinite;
-        }
-        
-        @keyframes rainbow-border {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 100% 50%; }
+            background: #444;
         }
         
         canvas {
@@ -74,13 +53,14 @@
         }
         
         button {
-            background: linear-gradient(45deg, #00ffff, #0080ff);
+            background: #00ffff;
             border: none;
             padding: 10px 20px;
-            color: white;
+            color: black;
             border-radius: 5px;
             cursor: pointer;
             margin: 5px;
+            font-weight: bold;
         }
         
         .hidden {
@@ -110,14 +90,11 @@
         <canvas id="hexCanvas" width="800" height="600"></canvas>
         <div class="controls">
             <button onclick="returnHome()">← Home</button>
-            <label>Gravity: </label>
-            <input type="range" id="gravity" min="0" max="0.5" step="0.01" value="0.1">
+            <label>Gravity: <input type="range" id="gravity" min="0" max="0.5" step="0.01" value="0.1"></label>
             <span id="gravityValue">0.1</span><br>
-            <label>Friction: </label>
-            <input type="range" id="friction" min="0.9" max="1" step="0.01" value="0.99">
+            <label>Friction: <input type="range" id="friction" min="0.9" max="1" step="0.01" value="0.99"></label>
             <span id="frictionValue">0.99</span><br>
-            <label>Bounce: </label>
-            <input type="range" id="bounce" min="0" max="1" step="0.01" value="0.8">
+            <label>Bounce: <input type="range" id="bounce" min="0" max="1" step="0.01" value="0.8"></label>
             <span id="bounceValue">0.8</span>
         </div>
     </div>
@@ -127,12 +104,10 @@
         <canvas id="pendulumCanvas" width="800" height="600"></canvas>
         <div class="controls">
             <button onclick="returnHome()">← Home</button>
-            <label>Gravity: </label>
-            <input type="range" id="pendulumGravity" min="0" max="0.5" step="0.01" value="0.1">
+            <label>Gravity: <input type="range" id="pendulumGravity" min="0" max="0.5" step="0.01" value="0.1"></label>
             <span id="pendulumGravityValue">0.1</span><br>
-            <label>Damping: </label>
-            <input type="range" id="pendulumDamping" min="0.9" max="1" step="0.01" value="0.99">
-            <span id="pendulumDampingValue">0.99</span><br>
+            <label>Damping: <input type="range" id="pendulumDamping" min="0.95" max="1" step="0.001" value="0.999"></label>
+            <span id="pendulumDampingValue">0.999</span><br>
         </div>
     </div>
 
@@ -141,12 +116,11 @@
         <canvas id="springCanvas" width="800" height="600"></canvas>
         <div class="controls">
             <button onclick="returnHome()">← Home</button>
-            <label>Stiffness: </label>
-            <input type="range" id="springStiffness" min="0.1" max="1" step="0.1" value="0.5">
-            <span id="springStiffnessValue">0.5</span><br>
-            <label>Damping: </label>
-            <input type="range" id="springDamping" min="0.9" max="1" step="0.01" value="0.99">
-            <span id="springDampingValue">0.99</span><br>
+            <label>Stiffness: <input type="range" id="springStiffness" min="0.1" max="2" step="0.1" value="0.8"></label>
+            <span id="springStiffnessValue">0.8</span><br>
+            <label>Damping: <input type="range" id="springDamping" min="0.9" max="1" step="0.01" value="0.95"></label>
+            <span id="springDampingValue">0.95</span><br>
+            <button onclick="addParticle()">Add Particle</button>
         </div>
     </div>
 
@@ -154,10 +128,13 @@
         // Scene management
         let currentScene = null;
         let animationFrame = null;
+        let mouseDown = false;
+        let selectedParticle = null;
 
         function loadScene(sceneId) {
             if (currentScene) {
                 document.getElementById(currentScene).classList.add('hidden');
+                cancelAnimationFrame(animationFrame);
             }
             currentScene = sceneId;
             document.getElementById(sceneId).classList.remove('hidden');
@@ -165,12 +142,7 @@
         }
 
         function returnHome() {
-            if (currentScene) {
-                document.getElementById(currentScene).classList.add('hidden');
-                cancelAnimationFrame(animationFrame);
-            }
-            document.getElementById('home').classList.remove('hidden');
-            currentScene = null;
+            loadScene('home');
         }
 
         // Initialize scenes
@@ -321,7 +293,7 @@
             }
 
             const pendulums = Array.from({ length: 15 }, (_, i) =>
-                new Pendulum(100 + i * 40, 200, 150 + i * 2, Math.PI / 4)
+                new Pendulum(100 + i * 40, 200, 150 + i * 2, Math.PI/4 * (i/15))
             );
 
             function animate() {
@@ -345,6 +317,8 @@
         function initSpringScene() {
             const canvas = document.getElementById('springCanvas');
             const ctx = canvas.getContext('2d');
+            let particles = [];
+            let springs = [];
 
             class Particle {
                 constructor(x, y) {
@@ -355,21 +329,54 @@
             }
 
             class Spring {
-                constructor(p1, p2, restLength) {
+                constructor(p1, p2) {
                     this.p1 = p1;
                     this.p2 = p2;
-                    this.restLength = restLength;
-                    this.stiffness = 0.5;
+                    this.restLength = Math.hypot(p2.pos.x - p1.pos.x, p2.pos.y - p1.pos.y);
                 }
             }
 
-            const particles = [new Particle(300, 300), new Particle(400, 300)];
-            const springs = [new Spring(particles[0], particles[1], 100)];
+            // Initialize with two particles
+            particles.push(new Particle(300, 300));
+            particles.push(new Particle(400, 300));
+            springs.push(new Spring(particles[0], particles[1]));
+
+            // Mouse interaction
+            canvas.addEventListener('mousedown', e => {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                particles.forEach(p => {
+                    if (Math.hypot(p.pos.x - mouseX, p.pos.y - mouseY) < 10) {
+                        selectedParticle = p;
+                    }
+                });
+            });
+
+            canvas.addEventListener('mousemove', e => {
+                if (selectedParticle) {
+                    const rect = canvas.getBoundingClientRect();
+                    selectedParticle.pos.x = e.clientX - rect.left;
+                    selectedParticle.pos.y = e.clientY - rect.top;
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                selectedParticle = null;
+            });
+
+            function addParticle() {
+                const newParticle = new Particle(300 + Math.random() * 200, 300 + Math.random() * 200);
+                particles.push(newParticle);
+                if (particles.length > 1) {
+                    springs.push(new Spring(particles[particles.length-2], newParticle));
+                }
+            }
 
             function animate() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Update physics
                 const stiffness = parseFloat(document.getElementById('springStiffness').value);
                 const damping = parseFloat(document.getElementById('springDamping').value);
 
@@ -388,16 +395,15 @@
                     spring.p2.acc.y -= fy;
                 });
 
-                particles.forEach(particle => {
-                    particle.vel.x += particle.acc.x;
-                    particle.vel.y += particle.acc.y;
-                    particle.pos.x += particle.vel.x;
-                    particle.pos.y += particle.vel.y;
-                    particle.acc.x = particle.acc.y = 0;
-
-                    // Apply damping
-                    particle.vel.x *= damping;
-                    particle.vel.y *= damping;
+                particles.forEach(p => {
+                    p.vel.x += p.acc.x;
+                    p.vel.y += p.acc.y;
+                    p.vel.x *= damping;
+                    p.vel.y *= damping;
+                    p.pos.x += p.vel.x;
+                    p.pos.y += p.vel.y;
+                    p.acc.x = 0;
+                    p.acc.y = 0;
                 });
 
                 // Draw
@@ -409,9 +415,9 @@
                     ctx.stroke();
                 });
 
-                particles.forEach(particle => {
+                particles.forEach(p => {
                     ctx.beginPath();
-                    ctx.arc(particle.pos.x, particle.pos.y, 5, 0, Math.PI * 2);
+                    ctx.arc(p.pos.x, p.pos.y, 5, 0, Math.PI * 2);
                     ctx.fillStyle = '#ff00ff';
                     ctx.fill();
                 });
