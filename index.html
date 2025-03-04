@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Physics Simulator</title>
+    <title>Spinning Hexagon with Bouncing Ball</title>
     <style>
         body {
             margin: 0;
@@ -10,423 +10,175 @@
             color: white;
             font-family: Arial, sans-serif;
         }
-        
-        .home-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-        
-        .scene-option {
-            padding: 20px;
-            margin: 10px;
-            background: #333;
-            color: white;
-            border: 2px solid #00ffff;
-            border-radius: 15px;
-            cursor: pointer;
-            width: 300px;
-            text-align: center;
-            transition: transform 0.2s;
-        }
-        
-        .scene-option:hover {
-            transform: scale(1.05);
-            background: #444;
-        }
-        
         canvas {
-            border: 2px solid white;
-            border-radius: 10px;
+            border: 2px solid #0ff;
             background: #2a2a2a;
         }
-        
         .controls {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.8);
-            padding: 15px;
-            border-radius: 10px;
-            border: 2px solid white;
+            margin-top: 20px;
         }
-        
-        button {
-            background: #00ffff;
-            border: none;
-            padding: 10px 20px;
-            color: black;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-            font-weight: bold;
-        }
-        
-        .hidden {
-            display: none;
+        label {
+            display: inline-block;
+            width: 100px;
         }
     </style>
 </head>
 <body>
-    <div id="home" class="home-screen">
-        <h1>Physics Simulator</h1>
-        <div class="scene-option" onclick="loadScene('spinning-hexagon')">
-            <h2>Spinning Hexagon</h2>
-            <p>Bouncing ball in rotating hexagon with adjustable physics</p>
-        </div>
-        <div class="scene-option" onclick="loadScene('pendulum-wave')">
-            <h2>Pendulum Wave</h2>
-            <p>Array of swinging pendulums with variable parameters</p>
-        </div>
-        <div class="scene-option" onclick="loadScene('spring-particles')">
-            <h2>Spring Particles</h2>
-            <p>Interactive particles connected with springs</p>
-        </div>
-    </div>
-
-    <!-- Spinning Hexagon Scene -->
-    <div id="spinning-hexagon" class="hidden">
-        <canvas id="hexCanvas" width="800" height="600"></canvas>
-        <div class="controls">
-            <button onclick="returnHome()">← Home</button>
-            <label>Gravity: <input type="range" id="gravity" min="0" max="0.5" step="0.01" value="0.1"></label>
-            <span id="gravityValue">0.1</span><br>
-            <label>Friction: <input type="range" id="friction" min="0.9" max="1" step="0.01" value="0.99"></label>
-            <span id="frictionValue">0.99</span><br>
-            <label>Bounce: <input type="range" id="bounce" min="0" max="1" step="0.01" value="0.8"></label>
-            <span id="bounceValue">0.8</span>
-        </div>
-    </div>
-
-    <!-- Pendulum Wave Scene -->
-    <div id="pendulum-wave" class="hidden">
-        <canvas id="pendulumCanvas" width="800" height="600"></canvas>
-        <div class="controls">
-            <button onclick="returnHome()">← Home</button>
-            <label>Gravity: <input type="range" id="pendulumGravity" min="0" max="0.5" step="0.01" value="0.1"></label>
-            <span id="pendulumGravityValue">0.1</span><br>
-            <label>Damping: <input type="range" id="pendulumDamping" min="0.95" max="1" step="0.001" value="0.999"></label>
-            <span id="pendulumDampingValue">0.999</span><br>
-        </div>
-    </div>
-
-    <!-- Spring Particles Scene -->
-    <div id="spring-particles" class="hidden">
-        <canvas id="springCanvas" width="800" height="600"></canvas>
-        <div class="controls">
-            <button onclick="returnHome()">← Home</button>
-            <label>Stiffness: <input type="range" id="springStiffness" min="0.1" max="2" step="0.1" value="0.8"></label>
-            <span id="springStiffnessValue">0.8</span><br>
-            <label>Damping: <input type="range" id="springDamping" min="0.9" max="1" step="0.01" value="0.95"></label>
-            <span id="springDampingValue">0.95</span><br>
-            <button onclick="addParticle()">Add Particle</button>
-        </div>
+    <canvas id="canvas" width="600" height="600"></canvas>
+    <div class="controls">
+        <label>Gravity:</label>
+        <input type="range" id="gravity" min="0" max="0.5" step="0.01" value="0.1">
+        <span id="gravityValue">0.1</span><br>
+        <label>Friction:</label>
+        <input type="range" id="friction" min="0.9" max="1" step="0.01" value="0.99">
+        <span id="frictionValue">0.99</span><br>
+        <label>Bounce:</label>
+        <input type="range" id="bounce" min="0" max="1" step="0.01" value="0.8">
+        <span id="bounceValue">0.8</span>
     </div>
 
     <script>
-        // Scene management
-        let currentScene = null;
-        let animationFrame = null;
-        let mouseDown = false;
-        let selectedParticle = null;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const hexSize = 200;
+        const ballRadius = 10;
+        let hexAngle = 0;
+        const omega = 0.02;
 
-        function loadScene(sceneId) {
-            if (currentScene) {
-                document.getElementById(currentScene).classList.add('hidden');
-                cancelAnimationFrame(animationFrame);
+        let ball = {
+            x: cx,
+            y: cy,
+            vx: 2,
+            vy: 0
+        };
+
+        function getHexVertices(angle) {
+            const vertices = [];
+            for (let i = 0; i < 6; i++) {
+                const theta = angle + i * Math.PI / 3;
+                vertices.push({
+                    x: cx + hexSize * Math.cos(theta),
+                    y: cy + hexSize * Math.sin(theta)
+                });
             }
-            currentScene = sceneId;
-            document.getElementById(sceneId).classList.remove('hidden');
-            initializeScene(sceneId);
+            return vertices;
         }
 
-        function returnHome() {
-            loadScene('home');
-        }
+        function closestPointOnSegment(A, B, p) {
+            const ax = A.x, ay = A.y;
+            const bx = B.x, by = B.y;
+            const px = p.x, py = p.y;
 
-        // Initialize scenes
-        function initializeScene(sceneId) {
-            switch (sceneId) {
-                case 'spinning-hexagon':
-                    initHexagonScene();
-                    break;
-                case 'pendulum-wave':
-                    initPendulumScene();
-                    break;
-                case 'spring-particles':
-                    initSpringScene();
-                    break;
-            }
-        }
+            const abx = bx - ax;
+            const aby = by - ay;
+            const apx = px - ax;
+            const apy = py - ay;
 
-        // Spinning Hexagon Scene
-        function initHexagonScene() {
-            const canvas = document.getElementById('hexCanvas');
-            const ctx = canvas.getContext('2d');
-            const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
-            const hexSize = 250;
-            let hexAngle = 0;
-            const omega = 0.02;
+            const t = (apx * abx + apy * aby) / (abx * abx + aby * aby);
+            const tClamped = Math.max(0, Math.min(1, t));
 
-            let ball = {
-                x: cx,
-                y: cy,
-                vx: 2,
-                vy: 0
+            return {
+                x: ax + abx * tClamped,
+                y: ay + aby * tClamped
             };
+        }
 
-            function getHexVertices(angle) {
-                const vertices = [];
-                for (let i = 0; i < 6; i++) {
-                    const theta = angle + i * Math.PI / 3;
-                    vertices.push({
-                        x: cx + hexSize * Math.cos(theta),
-                        y: cy + hexSize * Math.sin(theta)
-                    });
-                }
-                return vertices;
-            }
+        function reflect(v, normal) {
+            const dot = v.x * normal.x + v.y * normal.y;
+            return {
+                x: v.x - 2 * dot * normal.x,
+                y: v.y - 2 * dot * normal.y
+            };
+        }
 
-            function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Update physics
-                hexAngle += omega;
-                const gravity = parseFloat(document.getElementById('gravity').value);
-                const friction = parseFloat(document.getElementById('friction').value);
-                const bounce = parseFloat(document.getElementById('bounce').value);
+            // Update physics
+            hexAngle += omega;
+            const gravity = parseFloat(document.getElementById('gravity').value);
+            const friction = parseFloat(document.getElementById('friction').value);
+            const bounce = parseFloat(document.getElementById('bounce').value);
 
-                ball.vy += gravity;
-                ball.vx *= friction;
-                ball.vy *= friction;
+            ball.vy += gravity;
+            ball.vx *= friction;
+            ball.vy *= friction;
 
-                ball.x += ball.vx;
-                ball.y += ball.vy;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
 
-                // Collision detection
-                const vertices = getHexVertices(hexAngle);
-                for (let i = 0; i < 6; i++) {
-                    const A = vertices[i];
-                    const B = vertices[(i + 1) % 6];
-                    const dx = B.x - A.x;
-                    const dy = B.y - A.y;
-                    const normal = { x: -dy, y: dx };
+            // Collision detection
+            const vertices = getHexVertices(hexAngle);
+            for (let i = 0; i < 6; i++) {
+                const A = vertices[i];
+                const B = vertices[(i + 1) % 6];
+                const P = closestPointOnSegment(A, B, ball);
+
+                const dx = ball.x - P.x;
+                const dy = ball.y - P.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < ballRadius) {
+                    const M = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+                    const normal = { x: cx - M.x, y: cy - M.y };
                     const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y);
                     normal.x /= length;
                     normal.y /= length;
 
-                    const ballToA = { x: ball.x - A.x, y: ball.y - A.y };
-                    const distance = ballToA.x * normal.x + ballToA.y * normal.y;
+                    const vt = {
+                        x: -omega * (P.y - cy),
+                        y: omega * (P.x - cx)
+                    };
 
-                    if (distance < 10) {
-                        const dot = ball.vx * normal.x + ball.vy * normal.y;
-                        ball.vx -= 2 * dot * normal.x;
-                        ball.vy -= 2 * dot * normal.y;
-                        ball.vx *= bounce;
-                        ball.vy *= bounce;
-                        ball.x += normal.x * (10 - distance);
-                        ball.y += normal.y * (10 - distance);
-                    }
+                    const vRel = {
+                        x: ball.vx - vt.x,
+                        y: ball.vy - vt.y
+                    };
+                    const vReflected = reflect(vRel, normal);
+
+                    ball.vx = vReflected.x * bounce + vt.x;
+                    ball.vy = vReflected.y * bounce + vt.y;
+
+                    ball.x = P.x + normal.x * ballRadius;
+                    ball.y = P.y + normal.y * ballRadius;
+                    break;
                 }
-
-                // Draw hexagon
-                ctx.beginPath();
-                ctx.strokeStyle = '#1a73e8';
-                ctx.lineWidth = 4;
-                vertices.forEach((v, i) => {
-                    if (i === 0) ctx.moveTo(v.x, v.y);
-                    else ctx.lineTo(v.x, v.y);
-                });
-                ctx.closePath();
-                ctx.stroke();
-
-                // Draw ball
-                ctx.beginPath();
-                ctx.arc(ball.x, ball.y, 10, 0, Math.PI * 2);
-                ctx.fillStyle = 'red';
-                ctx.fill();
-
-                animationFrame = requestAnimationFrame(animate);
             }
 
-            animate();
+            // Draw hexagon
+            ctx.beginPath();
+            ctx.strokeStyle = '#0ff';
+            ctx.lineWidth = 4;
+            vertices.forEach((v, i) => {
+                if (i === 0) ctx.moveTo(v.x, v.y);
+                else ctx.lineTo(v.x, v.y);
+            });
+            ctx.closePath();
+            ctx.stroke();
+
+            // Draw ball
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'red';
+            ctx.fill();
+
+            requestAnimationFrame(animate);
         }
 
-        // Pendulum Wave Scene
-        function initPendulumScene() {
-            const canvas = document.getElementById('pendulumCanvas');
-            const ctx = canvas.getContext('2d');
+        // Update slider values
+        document.getElementById('gravity').oninput = function() {
+            document.getElementById('gravityValue').textContent = this.value;
+        };
+        document.getElementById('friction').oninput = function() {
+            document.getElementById('frictionValue').textContent = this.value;
+        };
+        document.getElementById('bounce').oninput = function() {
+            document.getElementById('bounceValue').textContent = this.value;
+        };
 
-            class Pendulum {
-                constructor(x, y, length, angle) {
-                    this.anchor = { x, y };
-                    this.length = length;
-                    this.angle = angle;
-                    this.velocity = 0;
-                    this.acceleration = 0;
-                }
-
-                update(gravity, damping) {
-                    this.acceleration = (-gravity / this.length) * Math.sin(this.angle);
-                    this.velocity += this.acceleration;
-                    this.velocity *= damping;
-                    this.angle += this.velocity;
-                }
-
-                draw(ctx) {
-                    const bobX = this.anchor.x + this.length * Math.sin(this.angle);
-                    const bobY = this.anchor.y + this.length * Math.cos(this.angle);
-
-                    ctx.beginPath();
-                    ctx.moveTo(this.anchor.x, this.anchor.y);
-                    ctx.lineTo(bobX, bobY);
-                    ctx.strokeStyle = 'white';
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.arc(bobX, bobY, 10, 0, Math.PI * 2);
-                    ctx.fillStyle = '#00ffff';
-                    ctx.fill();
-                }
-            }
-
-            const pendulums = Array.from({ length: 15 }, (_, i) =>
-                new Pendulum(100 + i * 40, 200, 150 + i * 2, Math.PI/4 * (i/15))
-            );
-
-            function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                const gravity = parseFloat(document.getElementById('pendulumGravity').value);
-                const damping = parseFloat(document.getElementById('pendulumDamping').value);
-
-                pendulums.forEach(p => {
-                    p.update(gravity, damping);
-                    p.draw(ctx);
-                });
-
-                animationFrame = requestAnimationFrame(animate);
-            }
-
-            animate();
-        }
-
-        // Spring Particles Scene
-        function initSpringScene() {
-            const canvas = document.getElementById('springCanvas');
-            const ctx = canvas.getContext('2d');
-            let particles = [];
-            let springs = [];
-
-            class Particle {
-                constructor(x, y) {
-                    this.pos = { x, y };
-                    this.vel = { x: 0, y: 0 };
-                    this.acc = { x: 0, y: 0 };
-                }
-            }
-
-            class Spring {
-                constructor(p1, p2) {
-                    this.p1 = p1;
-                    this.p2 = p2;
-                    this.restLength = Math.hypot(p2.pos.x - p1.pos.x, p2.pos.y - p1.pos.y);
-                }
-            }
-
-            // Initialize with two particles
-            particles.push(new Particle(300, 300));
-            particles.push(new Particle(400, 300));
-            springs.push(new Spring(particles[0], particles[1]));
-
-            // Mouse interaction
-            canvas.addEventListener('mousedown', e => {
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                
-                particles.forEach(p => {
-                    if (Math.hypot(p.pos.x - mouseX, p.pos.y - mouseY) < 10) {
-                        selectedParticle = p;
-                    }
-                });
-            });
-
-            canvas.addEventListener('mousemove', e => {
-                if (selectedParticle) {
-                    const rect = canvas.getBoundingClientRect();
-                    selectedParticle.pos.x = e.clientX - rect.left;
-                    selectedParticle.pos.y = e.clientY - rect.top;
-                }
-            });
-
-            canvas.addEventListener('mouseup', () => {
-                selectedParticle = null;
-            });
-
-            function addParticle() {
-                const newParticle = new Particle(300 + Math.random() * 200, 300 + Math.random() * 200);
-                particles.push(newParticle);
-                if (particles.length > 1) {
-                    springs.push(new Spring(particles[particles.length-2], newParticle));
-                }
-            }
-
-            function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                const stiffness = parseFloat(document.getElementById('springStiffness').value);
-                const damping = parseFloat(document.getElementById('springDamping').value);
-
-                springs.forEach(spring => {
-                    const dx = spring.p2.pos.x - spring.p1.pos.x;
-                    const dy = spring.p2.pos.y - spring.p1.pos.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const force = (distance - spring.restLength) * stiffness;
-
-                    const fx = (dx / distance) * force;
-                    const fy = (dy / distance) * force;
-
-                    spring.p1.acc.x += fx;
-                    spring.p1.acc.y += fy;
-                    spring.p2.acc.x -= fx;
-                    spring.p2.acc.y -= fy;
-                });
-
-                particles.forEach(p => {
-                    p.vel.x += p.acc.x;
-                    p.vel.y += p.acc.y;
-                    p.vel.x *= damping;
-                    p.vel.y *= damping;
-                    p.pos.x += p.vel.x;
-                    p.pos.y += p.vel.y;
-                    p.acc.x = 0;
-                    p.acc.y = 0;
-                });
-
-                // Draw
-                springs.forEach(spring => {
-                    ctx.beginPath();
-                    ctx.moveTo(spring.p1.pos.x, spring.p1.pos.y);
-                    ctx.lineTo(spring.p2.pos.x, spring.p2.pos.y);
-                    ctx.strokeStyle = 'white';
-                    ctx.stroke();
-                });
-
-                particles.forEach(p => {
-                    ctx.beginPath();
-                    ctx.arc(p.pos.x, p.pos.y, 5, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ff00ff';
-                    ctx.fill();
-                });
-
-                animationFrame = requestAnimationFrame(animate);
-            }
-
-            animate();
-        }
+        animate();
     </script>
 </body>
 </html>
